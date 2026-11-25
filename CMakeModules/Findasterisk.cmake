@@ -43,4 +43,18 @@ find_path(ASTERISK_LIBRARY_DIR app_dial.so
 
 if(ASTERISK_INCLUDE_DIR AND ASTERISK_LIBRARY_DIR)
 	set(ASTERISK_FOUND "YES")
+elseif(ASTERISK_INCLUDE_DIR)
+	# Only the development headers are installed (e.g. a build container with
+	# asterisk-dev but no asterisk package), so no module directory with
+	# app_dial.so exists to detect. Fall back to the standard module
+	# directory layout of the platform.
+	set(ASTERISK_FOUND "YES")
+	if(EXISTS "/usr/lib/x86_64-linux-gnu")
+		set(ASTERISK_LIBRARY_DIR "/usr/lib/x86_64-linux-gnu/asterisk/modules")
+	elseif(EXISTS "/usr/lib64")
+		set(ASTERISK_LIBRARY_DIR "/usr/lib64/asterisk/modules")
+	else()
+		set(ASTERISK_LIBRARY_DIR "/usr/lib/asterisk/modules")
+	endif()
+	message(STATUS "Asterisk modules directory not found; defaulting to ${ASTERISK_LIBRARY_DIR} (override with -DASTERISK_LIBRARY_DIR=...)")
 endif()
