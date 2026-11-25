@@ -50,6 +50,11 @@ but the performance is low compared to a asterisk module and the integration is 
   (e.g. lists, hashes) instead of misreporting errors.
 - Config parsing hardened (port/timeout are range-checked via
   `ast_parse_arg`).
+- Asterisk XML documentation is generated from the `DOCUMENTATION` block and
+  installed to `<asterisk-datadir>/documentation/thirdparty/`, so
+  `core show function REDIS` prints real help and the
+  "Couldn't find function REDIS in XML documentation" warnings disappear
+  (run `xmldoc reload` or restart Asterisk after installing).
 - Build system modernized: CMake >= 3.10, hiredis located via
   `find_library`, multiarch Asterisk module directories supported.
 
@@ -76,7 +81,17 @@ but the performance is low compared to a asterisk module and the integration is 
 6. `sudo make install`
 7. `sudo make samples` — copies `samples/func_redis.conf.sample` to
    `/etc/asterisk/func_redis.conf` (adjust to your Asterisk config dir).
-8. Ensure the module is loaded: either keep `autoload=yes` in
+8. The build also generates `func_redis-en_US.xml` — the Asterisk XML
+   documentation for the module's dialplan functions — and `make install`
+   places it in `${ASTERISK_DATA_DIR}/documentation/thirdparty/`.
+   Asterisk's data directory is auto-detected (Debian/Ubuntu:
+   `/usr/share/asterisk`; vanilla builds: `/var/lib/asterisk`; override with
+   `-DASTERISK_DATA_DIR=/path`). On a running Asterisk refresh the
+   documentation with `asterisk -rx "xmldoc reload"` (or restart). Without
+   this file every module load logs
+   "Couldn't find function REDIS in XML documentation" and
+   `core show function REDIS` prints no help.
+9. Ensure the module is loaded: either keep `autoload=yes` in
    `modules.conf`, or add `load => func_redis.so`, then restart Asterisk
    or run `module load func_redis.so` in the Asterisk CLI.
 

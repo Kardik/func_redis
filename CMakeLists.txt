@@ -50,12 +50,57 @@ endif()
 
 install(TARGETS func_redis DESTINATION "${ASTERISK_LIBRARY_DIR}")
 
+# ---------------------------------------------------------------------------
+# Asterisk XML documentation for out-of-tree modules.
+#
+# Asterisk loads function/application documentation for external modules from
+# ${AST_DATA_DIR}/documentation/thirdparty/*-<lang>.xml (see xmldoc.c). Without
+# it every dialplan function registration logs
+# "Couldn't find function X in XML documentation" and 'core show function'
+# prints no help. Generate the file from the DOCUMENTATION block and install
+# it; a running Asterisk then needs 'xmldoc reload' (or a restart).
+#
+# The data directory differs across installs (/usr/share/asterisk on
+# Debian/Ubuntu, /var/lib/asterisk on vanilla builds), so detect it by looking
+# for the installed core documentation.
+find_path(ASTERISK_DATA_DIR
+	NAMES documentation/core-en_US.xml
+	PATHS
+		/usr/share/asterisk
+		/usr/local/share/asterisk
+		/var/lib/asterisk
+		/usr/local/var/lib/asterisk
+	DOC "Asterisk data directory (the one containing documentation/)")
+if(NOT ASTERISK_DATA_DIR)
+	set(ASTERISK_DATA_DIR "/var/lib/asterisk" CACHE PATH "Asterisk data directory (documentation/thirdparty)")
+	message(WARNING "Could not locate the Asterisk data directory; installing documentation to ${ASTERISK_DATA_DIR}/documentation/thirdparty (override with -DASTERISK_DATA_DIR=...)")
+endif()
+
+find_program(AWK_EXECUTABLE NAMES awk gawk mawk)
+
+set(ASTDOC_XML "${CMAKE_CURRENT_BINARY_DIR}/func_redis-en_US.xml")
+if(AWK_EXECUTABLE)
+	add_custom_command(
+		OUTPUT "${ASTDOC_XML}"
+		COMMAND sh "${CMAKE_CURRENT_SOURCE_DIR}/build_tools/gen_xmldoc.sh"
+			"${CMAKE_CURRENT_SOURCE_DIR}/src/func_redis.c" func_redis "${ASTDOC_XML}"
+		DEPENDS
+			"${CMAKE_CURRENT_SOURCE_DIR}/src/func_redis.c"
+			"${CMAKE_CURRENT_SOURCE_DIR}/build_tools/gen_xmldoc.sh"
+			"${CMAKE_CURRENT_SOURCE_DIR}/build_tools/get_documentation"
+		COMMENT "Generating Asterisk XML documentation (func_redis-en_US.xml)")
+	add_custom_target(xmldoc ALL DEPENDS "${ASTDOC_XML}")
+	install(FILES "${ASTDOC_XML}" DESTINATION "${ASTERISK_DATA_DIR}/documentation/thirdparty")
+else()
+	message(WARNING "awk not found: Asterisk XML documentation will not be generated")
+endif()
+
 add_custom_target(samples
 	COMMAND ${CMAKE_COMMAND} -E copy_if_different
 		"${CMAKE_SOURCE_DIR}/samples/func_redis.conf.sample" /etc/asterisk/func_redis.conf)
 
 add_custom_target(uninstall
-	COMMAND rm -f "${ASTERISK_LIBRARY_DIR}/func_redis.so" /etc/asterisk/func_redis.conf)
+	COMMAND rm -f "${ASTERISK_LIBRARY_DIR}/func_redis.so" /etc/asterisk/func_redis.conf "${ASTERISK_DATA_DIR}/documentation/thirdparty/func_redis-en_US.xml")
 
 add_custom_target(security_checks COMMAND "${CMAKE_SOURCE_DIR}/build_tools/check_security.sh" "${CMAKE_SOURCE_DIR}")
 

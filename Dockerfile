@@ -36,6 +36,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install the built module regardless of the modules directory layout.
 COPY --from=build /usr/lib/*/asterisk/modules/func_redis.so /usr/lib/asterisk/modules/func_redis.so
+COPY --from=build /src/build/func_redis-en_US.xml /usr/share/asterisk/documentation/thirdparty/func_redis-en_US.xml
 COPY samples/func_redis.conf.sample /etc/asterisk/func_redis.conf
 
 # Smoke test: start redis + asterisk, then exercise the module from the CLI
@@ -51,6 +52,9 @@ RUN set -eux; \
 	asterisk -rx "redis set smoke_cli it_works"; \
 	asterisk -rx "redis show smoke_*"; \
 	redis-cli get smoke_cli | grep -q it_works; \
+	asterisk -rx "xmldoc reload"; \
+	asterisk -rx "core show function REDIS" | grep -q "Read from or write to a Redis database"; \
+	asterisk -rx "core show function REDIS_COMMAND" | grep -q "arbitrary command"; \
 	printf '%s\n' \
 		'[redis-smoke]' \
 		'exten => s,1,Set(REDIS(smoke_dp)=dialplan_ok)' \
